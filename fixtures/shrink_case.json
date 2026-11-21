@@ -1,0 +1,13 @@
+{
+  "case": "压容假绿现场",
+  "slot_code": "S-PM-02",
+  "seed_pending": [{"party_key": "P-HOLD1", "seats": 2}],
+  "extra_holds": [
+    {"party_key": "P-OVER1", "seats": 2},
+    {"party_key": "P-OVER2", "seats": 2}
+  ],
+  "shrink_to": 3,
+  "note": "旧链路缩容只管改数字：容量 8→3 后 6 席超额占位仍挂占位中，对账只看正式册故灯假绿",
+  "expect_reclaim_parties": ["P-OVER2", "P-OVER1"],
+  "expect_keep_parties": ["P-HOLD1"]
+}

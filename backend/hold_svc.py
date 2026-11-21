@@ -1,4 +1,4 @@
-"""占位：容量校验、并发锁、候补分流。"""
+"""占位：容量校验、并发锁、候补分流、压容超额回收。"""
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -11,6 +11,33 @@ from db import connect, write_audit
 from locks import release, require_lock
 
 router = APIRouter(tags=["holds"])
+
+
+def reclaim_excess_holds(conn, slot_id: int, keep_seats: int, actor: str) -> list[dict]:
+    """压容整笔回收：最新先收，直到在占席数 ≤ keep_seats。
+
+    与调用方同一事务：任一步失败，容量与占位同滚，不允许只改数字。
+    """
+    rows = conn.execute(
+        "SELECT * FROM holds WHERE slot_id=? AND status='占位中' ORDER BY id DESC",
+        (slot_id,),
+    ).fetchall()
+    pending = sum(int(r["seats"]) for r in rows)
+    reclaimed: list[dict] = []
+    for r in rows:
+        if pending <= keep_seats:
+            break
+        conn.execute("UPDATE holds SET status='已回收' WHERE id=?", (r["id"],))
+        pending -= int(r["seats"])
+        reclaimed.append(dict(r))
+        write_audit(
+            conn,
+            actor,
+            "hold_reclaim",
+            r["party_key"],
+            {"hold_id": r["id"], "seats": r["seats"], "reason": "压容回收"},
+        )
+    return reclaimed
 
 
 class HoldIn(BaseModel):

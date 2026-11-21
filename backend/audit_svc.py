@@ -5,6 +5,7 @@ from fastapi import APIRouter
 
 from auth import AuthHeader, require_user
 from db import connect
+from slots_svc import SHRINK_CARD_DDL
 
 router = APIRouter(tags=["audit"])
 
@@ -16,6 +17,18 @@ def list_audit(authorization: AuthHeader = None, limit: int = 100):
     with connect() as conn:
         rows = conn.execute(
             "SELECT * FROM audit_trail ORDER BY id DESC LIMIT ?", (lim,)
+        ).fetchall()
+        return {"items": [dict(r) for r in rows]}
+
+
+@router.get("/api/shrink/cards")
+def list_shrink_cards(authorization: AuthHeader = None):
+    """压容回收卡：口径封卡只读面（路径、当日、回收笔数）。"""
+    require_user(authorization)
+    with connect() as conn:
+        conn.execute(SHRINK_CARD_DDL)
+        rows = conn.execute(
+            "SELECT * FROM shrink_cards ORDER BY id DESC LIMIT 100"
         ).fetchall()
         return {"items": [dict(r) for r in rows]}
 
